@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<style>
+    .form-control {
+    }
+</style>
+<div class="col-sm-6">
+    <h1>Create new user</h1>
+    <form method="post">
+        <label for="firstName" class="form-label"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Name (at least 3 characters):</font></font></label>
+        <input type="text" class="form-control" name="firstName" id="firstName" placeholder="Ivan"><br>
+        <label for="firstName" class="form-label"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Surname (at least 3 characters):</font></font></label>
+        <input type="text" class="form-control" name="lastName" id="lastName" placeholder="Ivanov"><br>
+        <label for="firstName" class="form-label"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Nickame (at least 3 characters):</font></font></label>
+        <input type="text" class="form-control" name="nickname" id="nickname" placeholder="turbo"><br>
+        <label for="firstName" class="form-label"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Email (at least 8 characters):</font></font></label>
+        <input type="text" class="form-control" name="email" id="email" placeholder="email@examle.com"><br>
+        <label for="firstName" class="form-label"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Password (at least 6 characters):</font></font></label>
+        <input type="text" class="form-control" name="password" id="password" placeholder="123456"><br>
+        <label for="firstName" class="form-label"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Repeat password</font></font></label>
+        <input type="text" class="form-control" name="rep_password" id="rep_password" placeholder="123456"><br>
+        <button class="btn btn-success" type="submit">Sign up</button>
+    </form>
+</div>
+{% endblock %}
