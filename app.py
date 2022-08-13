@@ -1,15 +1,18 @@
 import psycopg2
 import psycopg2.extras
 from flask import Flask, request, render_template, redirect, url_for, flash, session
+from flask_socketio import SocketIO, send
 from psycopg2 import Error
 from config import DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
-from create_db import create_tables, update_crypto, update_currency, update_news, check_users
+from create_db import create_tables, update_crypto, update_currency, update_news
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
+from datetime import datetime
+
 
 app = Flask(__name__)
 app.secret_key = 'cairocoders-ednalan'
-
+socketio = SocketIO(app, cors_allowed_origins='*')
 
 def get_db_connection():
     try:
@@ -32,9 +35,7 @@ connection = get_db_connection()
 def home():
     # Check if user is loggedin
     if 'loggedin' in session:
-        # User is loggedin show them the home page
         return render_template('home.html', username=session['username'])
-    # User is not loggedin redirect to login page
     else:
         return redirect(url_for('login'))
 
@@ -77,7 +78,7 @@ def login():
 
 @app.route('/register', methods=['POST', 'GET'])
 def register():
-    global hash_password, _hash_password
+    global _hash_password
     cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     if request.method == "POST" and 'firstName' in request.form and 'lastName' in request.form and 'nickname' \
@@ -138,7 +139,7 @@ def profile():
     cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     if 'loggedin' in session:
-        cursor.execute('SELECT * FROM users WHERE user_id = %s', [session['id']])
+        cursor.execute('''SELECT * FROM users WHERE user_id = %s''', [session['id']])
         user = cursor.fetchone()
         return render_template('profile.html', account=user)
 
@@ -150,14 +151,77 @@ def support():
     return render_template('support.html')
 
 
-@app.route('/messeges')
-def messeges():
+# @socketio.on('message')
+# def handleMessage(data):
+#     print(f"Message: {data}")
+#     send(data, broadcast=True)
+#
+#     message = ChatMessages(username=data['username'], msg=data['msg'])
+#     db.session.add(message)
+#     db.session.commit()
+
+@app.route('/messages/', methods=['POST', 'GET'])
+def messages():
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
     if 'loggedin' in session:
-        # User is loggedin show them the home page
-        return render_template('messeges.html', username=session['username'])
-    # User is not loggedin redirect to login page
-    else:
-        return redirect(url_for('login'))
+
+        if request.method == "POST":
+            cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
+            user = cursor.fetchone()
+            user_mess = request.form['message']
+            date = datetime.now().strftime('%H:%M:%S %d-%m-%Y')
+
+            if len(user_mess) > 0 and len(user_mess) < 1000:
+                cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time)
+                VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
+                connection.commit()
+
+            return redirect(url_for('messages'))
+
+        else:
+            cursor.execute('''SELECT nickname, user_text, date_time FROM messages ORDER BY date_time DESC''')
+            res_mess = cursor.fetchall()
+            resp = []
+            for row in res_mess:
+                resp.append({'nickname': row['nickname'], 'user_text': row['user_text'], 'date_time': row['date_time']})
+
+            return render_template('messages.html', messages=resp)
+
+    return redirect(url_for('login'))
+
+
+
+    # if 'loggedin' in session:
+    #
+    #     if request.method == "POST":
+    #         cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
+    #         user = cursor.fetchone()
+    #         user_mess = request.form['message']
+    #         date = datetime.now().strftime('%H:%M:%S %d-%m-%Y')
+    #
+    #         if len(user_mess) > 0:
+    #             cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time)
+    #             VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
+    #             connection.commit()
+    #
+    #         resp = update_messages(cursor)
+    #         return render_template('messages.html', messages=resp)
+    #
+    #     else:
+    #         resp = update_messages(cursor)
+    #         return render_template('messages.html', messages=resp)
+
+
+    # cursor.execute('''SELECT nickname, user_text, date_time FROM messeges ORDER BY date_time DESC''')
+    # res_mess = cursor.fetchall()
+    # resp = []
+    # for row in res_mess:
+    #     resp.append({'nickname': row['nickname'], 'user_text': row['user_text'], 'date_time': row['date_time']})
+    #
+    # return render_template('messages.html', messeges=resp)
+
+
 
 
 

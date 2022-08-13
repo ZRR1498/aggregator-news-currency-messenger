@@ -18,6 +18,19 @@ def create_tables(connection):
 
     with connection.cursor() as cursor:
         cursor.execute(
+            '''CREATE TABLE IF NOT EXISTS messages
+                          (id SERIAL PRIMARY KEY,
+                          user_id INT REFERENCES users(user_id),
+                          nickname VARCHAR(50),
+                          user_text VARCHAR(1000),
+                          date_time VARCHAR(30)
+                          );''')
+
+    connection.commit()
+
+
+    with connection.cursor() as cursor:
+        cursor.execute(
             '''CREATE TABLE IF NOT EXISTS exchange_currency
                           (currency_id SERIAL PRIMARY KEY,
                           currency_code VARCHAR(20),
@@ -118,23 +131,3 @@ def update_currency(connection):
                                                   str(arr_currency[i][2]), str(arr_currency[i][3]),
                                                   str(arr_currency[i][4])))
             connection.commit()
-
-
-def check_users(connection, user_email, user_nickname):
-    with connection.cursor() as cursor:
-        cursor.execute(
-            f'''SELECT COUNT(user_id)::int AS count FROM users WHERE email LIKE '{user_email}';''')
-        res = cursor.fetchone()
-        if res[0] > 0:
-            return False
-
-        cursor.execute(
-            f'''SELECT COUNT(user_id)::int AS count FROM users WHERE nickname LIKE '{user_nickname}';''')
-        res = cursor.fetchone()
-        if res[0] > 0:
-            return False
-
-    return True
-
-
-
