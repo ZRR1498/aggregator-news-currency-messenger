@@ -24,7 +24,7 @@
 
 
     <div class="container">
-{#        <div class="card-deck mb-3 text-top">#}
+        <div class="card-deck mb-3 text-top">
           <div class="card mb-4 shadow-sm">
             <div class="card-header">
               <h4 class="my-0 font-weight-normal">Messages</h4>
@@ -37,10 +37,10 @@
                                 <div class="container">
                                   <div class="card mb-1">
                                       <div class="col-12">
-                                          <b>{{ m['nickname'] }}:</b>
+                                        <b>{{ m['nickname'] }}:</b>
                                       </div>
                                       <div class="col-12">
-                                          <p align="justify">{{ m['user_text'] }}</p>
+                                        <p align="justify">{{ m['user_text'] }}</p>
                                       </div>
                                       <div class="col-12">
                                           <small class="d-block text-dark">"{{ m['date_time'] }}"</small>
@@ -54,22 +54,87 @@
                     </div>
                 </div>
                 </div>
+
                     <div class="card">
-{#                        для отделения окна отправки сообщения#}
+                      {#разделение окна отправки сообщения#}
                     </div>
 
-            <div class="card-header">
-                <form method="POST">
-                        <label for="message" class="form-label"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Enter your message:</font></font></label>
-                        <input type="text" class="form-control" name="message" id="message" placeholder="Hello, friends!"><br>
-                        <button class="btn btn-success" type="submit">Send message</button>
-                    </form>
-            </div>
-
-
+                    <div class="card-header">
+                        <form method="POST">
+                                <label for="message" class="form-label"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Enter your message:</font></font></label>
+                                <input type="text" class="form-control" name="message" id="myMessage" placeholder="Hello, friends!"><br>
+                                <button class="btn btn-success" type="submit">Send message</button>
+                        </form>
+                    </div>
                 </div>
-
-
             </div>
     </div>
 </body>
+
+
+
+
+
+
+{##}
+{#<html>#}
+{#<head>#}
+{#<title>Chat Room</title>#}
+{#<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.8/socket.io.min.js"></script>#}
+{#<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>#}
+{#</head>#}
+{#<body>#}
+{#<script type="text/javascript">#}
+{#$(document).ready(function() {#}
+{##}
+{#	var socket = io.connect('http://127.0.0.1:5000');#}
+{##}
+{#	socket.on('connect', function() {#}
+{#		socket.send('User has connected!');#}
+{#	});#}
+{##}
+{#	socket.on('message', function(data) {#}
+{#		$("#messages").append('<li>'+data+'</li>');#}
+{#		console.log('Received message');#}
+{#	});#}
+{##}
+{#	$('#sendbutton').on('click', function() {#}
+{#		socket.send($('#myMessage').val());#}
+{#		$('#myMessage').val('');#}
+{#	});#}
+{##}
+{#});#}
+{#</script>#}
+{#<ul id="messages">#}
+{#    {% if messages %}#}
+{#                            {% for m in messages %}#}
+{#                                <div class="container">#}
+{#                                  <div class="card mb-1">#}
+{#                                      <div class="col-12">#}
+{#                                        <b>{{ m['nickname'] }}:</b>#}
+{#                                      </div>#}
+{#                                      <div class="col-12">#}
+{#                                        <p align="justify">{{ m['user_text'] }}</p>#}
+{#                                      </div>#}
+{#                                      <div class="col-12">#}
+{#                                          <small class="d-block text-dark">"{{ m['date_time'] }}"</small>#}
+{#                                      </div>#}
+{#                                  </div>#}
+{#                                </div>#}
+{#                            {% endfor %}#}
+{#    {% else %}#}
+{#        <p>No messages found.</p>#}
+{#    {% endif %}#}
+{#</ul>#}
+{##}
+{#<input type="text" id="myMessage">#}
+{#<button id="sendbutton">Send</button>#}
+{##}
+{#                        <form method="POST">#}
+{#                                <label for="myMessage" class="form-label"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Enter your message:</font></font></label>#}
+{#                                <input type="text" class="form-control" name="myMessage" id="myMessage" placeholder="Hello, friends!"><br>#}
+{#                                <button class="btn btn-success" id="sendbutton" type="submit">Send message</button>#}
+{#                        </form>#}
+{##}
+{#</body>#}
+{#</html>#}

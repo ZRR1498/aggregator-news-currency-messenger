@@ -12,7 +12,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'cairocoders-ednalan'
-socketio = SocketIO(app, cors_allowed_origins='*')
+
 
 def get_db_connection():
     try:
@@ -151,21 +151,11 @@ def support():
     return render_template('support.html')
 
 
-# @socketio.on('message')
-# def handleMessage(data):
-#     print(f"Message: {data}")
-#     send(data, broadcast=True)
-#
-#     message = ChatMessages(username=data['username'], msg=data['msg'])
-#     db.session.add(message)
-#     db.session.commit()
-
 @app.route('/messages/', methods=['POST', 'GET'])
 def messages():
     cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     if 'loggedin' in session:
-
         if request.method == "POST":
             cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
             user = cursor.fetchone()
@@ -176,20 +166,17 @@ def messages():
                 cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time)
                 VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
                 connection.commit()
-
             return redirect(url_for('messages'))
 
         else:
-            cursor.execute('''SELECT nickname, user_text, date_time FROM messages ORDER BY date_time DESC''')
+            cursor.execute('''SELECT id, nickname, user_text, date_time FROM messages ORDER BY id DESC''')
             res_mess = cursor.fetchall()
             resp = []
             for row in res_mess:
                 resp.append({'nickname': row['nickname'], 'user_text': row['user_text'], 'date_time': row['date_time']})
-
             return render_template('messages.html', messages=resp)
 
     return redirect(url_for('login'))
-
 
 
     # if 'loggedin' in session:
