@@ -154,6 +154,7 @@ def support():
 
 @socketio.on('message')
 def handleMessage(data):
+    # date = datetime.now().strftime('%H:%M:%S %d-%m-%Y')
     print(f"Message: {data}")
     send(data, broadcast=True)
 
@@ -162,11 +163,12 @@ def handleMessage(data):
     cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
     user = cursor.fetchone()
     user_mess = data['msg']
-    date = datetime.now().strftime('%H:%M:%S %d-%m-%Y')
+    date = data['time']
 
     cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time) 
     VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
     connection.commit()
+
 
 
 @app.route('/messages/', methods=['POST', 'GET'])
@@ -174,30 +176,22 @@ def messages():
     cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     if 'loggedin' in session:
-        # if request.method == "POST":
-        #     cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
-        #     user = cursor.fetchone()
-        #     user_mess = request.form['message']
-        #     date = datetime.now().strftime('%H:%M:%S %d-%m-%Y')
-        #
-        #     if len(user_mess) > 0 and len(user_mess) < 1000:
-        #         cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time)
-        #         VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
-        #         connection.commit()
-        #     return redirect(url_for('messages'))
+        if request.method == 'POST':
+            cursor.execute('''DELETE FROM messages;''')
+            connection.commit()
 
         cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
         user = cursor.fetchone()
 
-        return render_template('messages.html', username=user['nickname'])
+        cursor.execute('''SELECT id, nickname, user_text, date_time FROM messages ORDER BY id ASC;''')
+        res_mess = cursor.fetchall()
+        resp = []
+        for row in res_mess:
+            resp.append({'nickname': row['nickname'], 'user_text': row['user_text'], 'date_time': row['date_time']})
+
+        return render_template('messages.html', username=user['nickname'], messages=resp)
 
     return redirect(url_for('login'))
-
-
-
-
-
-
 
     # cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     #
