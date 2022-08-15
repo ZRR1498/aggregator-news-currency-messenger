@@ -13,6 +13,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = 'cairocoders-ednalan'
 
+socketio = SocketIO(app, cors_allowed_origins='*')
 
 def get_db_connection():
     try:
@@ -151,66 +152,77 @@ def support():
     return render_template('support.html')
 
 
+@socketio.on('message')
+def handleMessage(data):
+    print(f"Message: {data}")
+    send(data, broadcast=True)
+
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
+    user = cursor.fetchone()
+    user_mess = data['msg']
+    date = datetime.now().strftime('%H:%M:%S %d-%m-%Y')
+
+    cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time) 
+    VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
+    connection.commit()
+
+
 @app.route('/messages/', methods=['POST', 'GET'])
 def messages():
     cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     if 'loggedin' in session:
-        if request.method == "POST":
-            cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
-            user = cursor.fetchone()
-            user_mess = request.form['message']
-            date = datetime.now().strftime('%H:%M:%S %d-%m-%Y')
+        # if request.method == "POST":
+        #     cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
+        #     user = cursor.fetchone()
+        #     user_mess = request.form['message']
+        #     date = datetime.now().strftime('%H:%M:%S %d-%m-%Y')
+        #
+        #     if len(user_mess) > 0 and len(user_mess) < 1000:
+        #         cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time)
+        #         VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
+        #         connection.commit()
+        #     return redirect(url_for('messages'))
 
-            if len(user_mess) > 0 and len(user_mess) < 1000:
-                cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time)
-                VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
-                connection.commit()
-            return redirect(url_for('messages'))
+        cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
+        user = cursor.fetchone()
 
-        else:
-            cursor.execute('''SELECT id, nickname, user_text, date_time FROM messages ORDER BY id DESC''')
-            res_mess = cursor.fetchall()
-            resp = []
-            for row in res_mess:
-                resp.append({'nickname': row['nickname'], 'user_text': row['user_text'], 'date_time': row['date_time']})
-            return render_template('messages.html', messages=resp)
+        return render_template('messages.html', username=user['nickname'])
 
     return redirect(url_for('login'))
 
 
-    # if 'loggedin' in session:
+
+
+
+
+
+    # cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     #
+    # if 'loggedin' in session:
     #     if request.method == "POST":
     #         cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
     #         user = cursor.fetchone()
     #         user_mess = request.form['message']
     #         date = datetime.now().strftime('%H:%M:%S %d-%m-%Y')
     #
-    #         if len(user_mess) > 0:
+    #         if len(user_mess) > 0 and len(user_mess) < 1000:
     #             cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time)
-    #             VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
+    #                 VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
     #             connection.commit()
-    #
-    #         resp = update_messages(cursor)
-    #         return render_template('messages.html', messages=resp)
+    #         return redirect(url_for('messages'))
     #
     #     else:
-    #         resp = update_messages(cursor)
+    #         cursor.execute('''SELECT id, nickname, user_text, date_time FROM messages ORDER BY id DESC''')
+    #         res_mess = cursor.fetchall()
+    #         resp = []
+    #         for row in res_mess:
+    #             resp.append({'nickname': row['nickname'], 'user_text': row['user_text'], 'date_time': row['date_time']})
     #         return render_template('messages.html', messages=resp)
-
-
-    # cursor.execute('''SELECT nickname, user_text, date_time FROM messeges ORDER BY date_time DESC''')
-    # res_mess = cursor.fetchall()
-    # resp = []
-    # for row in res_mess:
-    #     resp.append({'nickname': row['nickname'], 'user_text': row['user_text'], 'date_time': row['date_time']})
     #
-    # return render_template('messages.html', messeges=resp)
-
-
-
-
+    # return redirect(url_for('login'))
 
 
 
@@ -346,4 +358,6 @@ create_tables(connection)
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # app.run(debug=True)
+    socketio.run(app)
+
