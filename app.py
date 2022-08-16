@@ -12,7 +12,6 @@ import json
 
 app = Flask(__name__)
 app.secret_key = 'cairocoders-ednalan'
-
 socketio = SocketIO(app, cors_allowed_origins='*')
 
 
@@ -34,10 +33,9 @@ connection = get_db_connection()
 
 
 @app.route('/')
-def home():
-    # Check if user is loggedin
+def start():
     if 'loggedin' in session:
-        return render_template('home.html', username=session['username'])
+        return redirect(url_for('home.html', username=session['username']))
     else:
         return redirect(url_for('login'))
 
@@ -136,11 +134,33 @@ def logout():
     return redirect(url_for('login'))
 
 
-@app.route('/profile')
+@app.route('/home', methods=['GET'])
+def home():
+    if 'loggedin' in session:
+        cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursor.execute('''SELECT news, links, times FROM news ORDER BY times DESC LIMIT 30;''')
+        all_news = cursor.fetchall()
+        cursor.close()
+
+        dict_val = []
+        for elem in all_news:
+            dict_val.append([elem[0], elem[1], elem[2]])
+
+        return render_template('home.html', news=dict_val)
+
+    return redirect(url_for('login'))
+
+
+@app.route('/profile', methods=['POST', 'GET'])
 def profile():
     cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     if 'loggedin' in session:
+        if request.method == 'POST':
+            cursor.execute('''DELETE FROM users WHERE user_id = %s''', [session['id']])
+            connection.commit()
+            return redirect(url_for('login'))
+
         cursor.execute('''SELECT * FROM users WHERE user_id = %s''', [session['id']])
         user = cursor.fetchone()
         return render_template('profile.html', account=user)
@@ -158,8 +178,6 @@ def support():
 
 @socketio.on('message')
 def handleMessage(data):
-    # date = datetime.now().strftime('%H:%M:%S %d-%m-%Y')
-    print(f"Message: {data}")
     send(data, broadcast=True)
 
     cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -182,6 +200,7 @@ def messages():
         if request.method == 'POST':
             cursor.execute('''DELETE FROM messages;''')
             connection.commit()
+            return redirect(url_for('messages'))
 
         cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
         user = cursor.fetchone()
@@ -264,77 +283,45 @@ def get_currency():
     return redirect(url_for('login'))
 
 
-#
-#
-# @app.route('/2', methods=['GET'])
-# def get_crypto():
-#     if request.method == 'GET':
-#         try:
-#             cursor = connection.cursor()
-#             cursor.execute('''SELECT crypto_name, crypto_code, price, exchange_price, capitalization, volume,
-#                     exchange_per, date_time FROM exchange_crypto ORDER BY 8 DESC LIMIT 46;''')
-#
-#             all_value = cursor.fetchall()
-#             cursor.close()
-#
-#             dict_val = {}
-#
-#             for elem in all_value:
-#                 dict_val[elem[0]] = {'name': elem[0],
-#                                      'code': elem[1],
-#                                      'price': float(elem[2]),
-#                                      'ex_price': elem[3],
-#                                      'capitalization': elem[4],
-#                                      'volume': elem[5],
-#                                      'ex_per': elem[6],
-#                                      'time': elem[7]
-#                                      }
-#
-#             crypto_js = json.dumps(dict_val, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': '))
-#
-#             return crypto_js
-#
-#         except Exception as e:
-#             print(e)
+@socketio.on('task')
+def handleTask(data):
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
+    user = cursor.fetchone()
 
-#
-# @app.route('/3', methods=['GET'])
-# def get_news():
-#     if request.method == 'GET':
-#         try:
-#             cursor = connection.cursor()
-#             cursor.execute('''SELECT news, links, times, links_images FROM news ORDER BY 3 DESC LIMIT 30;''')
-#
-#             all_value = cursor.fetchall()
-#             cursor.close()
-#
-#             dict_val = {}
-#
-#             for elem in all_value:
-#                 dict_val[elem[2]] = {'title': str(elem[0]),
-#                                      'links': elem[1],
-#                                      'time': elem[2],
-#                                      'links_images': elem[3]
-#                                      }
-#             news_js = json.dumps(dict_val, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': '))
-#
-#             return news_js
-#
-#         except Exception as e:
-#             print(e)
+    send(data, broadcast=True)
+
+    user_mess = data['msg']
+    date = data['time']
+
+    cursor.execute('''INSERT INTO tasks(user_id, text_task, time_cr, completed)
+    VALUES (%s, %s, %s, %s);''', (user['user_id'], user_mess, date, 0))
+    connection.commit()
 
 
-# @app.route('/signup', methods=['POST'])
-# def sign_up():
-#     if request.method == 'POST':
-#         # email = request.form.get('email')
-#         # first_name = request.form.get('firstname')
-#         # last_name = request.form.get('lastname')
-#         # password = request.form.get('password')
-#         sd = request.json({
-#             'email': email,
-#             'name': name
-#         })
+@app.route('/tasks/', methods=['POST', 'GET'])
+def task_manager():
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    if 'loggedin' in session:
+        if request.method == 'POST':
+            cursor.execute('''DELETE FROM tasks;''')
+            connection.commit()
+            return redirect(url_for('tasks'))
+
+        cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
+        user = cursor.fetchone()
+
+        cursor.execute('''SELECT text_task, time_cr FROM tasks WHERE completed = 0 ORDER BY task_id ASC''',
+                       [session['id']])
+        res_mess = cursor.fetchall()
+        resp = []
+        for row in res_mess:
+            resp.append({'text_task': row['text_task'], 'time_created': row['time_cr']})
+
+        return render_template('tasks.html', user_id=user['user_id'], task=resp)
+
+    return redirect(url_for('login'))
 
 
 # def schedule_track(connection):
@@ -360,6 +347,7 @@ def get_currency():
 
 
 create_tables(connection)
+# update_news(connection)
 # schedule_track(connection)
 
 # update_crypto(connection)

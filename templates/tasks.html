@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Messages</title>
+    <title>Tasks</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
           integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
 </head>
@@ -13,7 +13,7 @@
   <h5 class="my-0 mr-md-auto font-weight-normal">Aggregator News</h5>
   <nav class="my-2 my-md-0 mr-md-3">
     <a class="p-2 text-dark" href="/messages">Messages</a>
-    <a class="p-2 text-dark" href="/tasks/">Tasks</a>
+    <a class="p-2 text-dark" href="/tasks">Tasks</a>
     <a class="p-2 text-dark" href="/currency">Exchange rates</a>
     <a class="p-2 text-dark" href="/home">Home</a>
       <a class="p-2 text-dark" href="/profile">Profile</a>
@@ -25,31 +25,24 @@
     <div class="container">
         <div class="card-deck mb-3 text-top">
           <div class="card mb-4 shadow-sm">
-              <div class="card-header">
-                  <h4 class="my-0 font-weight-normal">Messenger: Hello, <strong id="username">{{ username }}</strong>!</h4>
-              </div>
-
                 <div class="row">
                     <div class="col-md-8 text-top">
-                        <div style="width: 1100px; height: 500px; overflow: auto;" id="messages">
-                            {% if messages %}
-                                {% for m in messages %}
+                        <div style="width: 1100px; height: 500px; overflow: auto;" id="task">
+                            {% if task %}
+                                {% for m in task %}
                                     <div class="container" id="chat">
                                         <div class="card mb-1">
                                             <div class="col-12">
-                                                <b>{{ m['nickname'] }}:</b>
+                                                <p align="justify">{{ m['text_task'] }}</p>
                                             </div>
                                             <div class="col-12">
-                                                <p align="justify">{{ m['user_text'] }}</p>
-                                            </div>
-                                            <div class="col-12">
-                                                <small class="d-block text-dark">"{{ m['date_time'] }}"</small>
+                                                <small class="d-block text-dark">"{{ m['time_created'] }}"</small>
                                             </div>
                                         </div>
                                     </div>
                                 {% endfor %}
                             {% else %}
-                                <p>No messages found.</p>
+                                <p>No task found.</p>
                             {% endif %}
                         </div>
                     </div>
@@ -60,18 +53,18 @@
               </div>
 
               <div class="card-header">
-                  <form id="form_send_msg" autocomplete="off" novalidate>
+                  <form id="form_send_task" autocomplete="off" novalidate>
                       <div class="form-group">
-                          <label for="message_input">Message:</label>
-                          <input type="text" class="form-control" id="message_input" placeholder="Enter your message here">
+                          <label for="message_input">New task:</label>
+                          <input type="text" class="form-control" id="message_input" placeholder="Enter your task here">
                       </div>
-                      <button type="submit" id="send_msg" class="btn btn-success">Send</button>
+                      <button type="submit" id="send_msg" class="btn btn-success">Create</button>
                   </form>
               </div>
 
               <div class="card-header">
-                  <form method="POST" id="delete_mess">
-                      <button class="btn btn-success" id="sendbutton" type="submit">Delete history</button>
+                  <form method="POST" id="delete_tasks">
+                      <button class="btn btn-success" id="sendbutton" type="submit">Delete all tasks</button>
                   </form>
               </div>
           </div>
@@ -79,18 +72,21 @@
     </div>
 </body>
 
+
+
 <body>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
 
-    {% if username is not none %}
+    {% if user_id is not none %}
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.min.js"></script>
         <script>
             $(document).ready(() => {
-                $('#form_send_msg').on('submit', (e) => {
+                $('#form_send_task').on('submit', (e) => {
                     e.preventDefault();
                 });
+
 
                 function check_time() {
                     const t = new Date();
@@ -102,33 +98,26 @@
                     return hms + ' ' + d + '-' + m + '-' + y
                 }
 
+
                 const socket = io.connect('http://127.0.0.1:5000');
-                const username = $('#username').text();
 
-
-                socket.on('connect', () => {
-                    socket.send({'username': 'Service message', 'msg': 'User ' + username + ' has connected!', 'time': check_time()});
-                });
 
                 $('#send_msg').on('click', () => {
                     socket.send({
                             'msg': $('#message_input').val(),
-                            'username': username,
                             'time': check_time()
                         });
                     $('#message_input').val('');
                 });
 
-                socket.on('message', data => {
+                socket.on('task', data => {
                     if (data.msg.length > 0 && data.msg.length < 1000) {
                         {
                             const time = check_time()
-                            $('#messages').append(`<p>
+
+                            $('#task').append(`<p>
                                 <div class="container">
                                 <div class="card mb-1">
-                                     <div class="col-12">
-                                          <b>${data.username}:</b>
-                                     </div>
                                      <div class="col-12">
                                            <p align="justify">${data.msg}</p>
                                      </div>
@@ -147,69 +136,3 @@
     {% endif %}
 </body>
 </html>
-
-
-
-
-{##}
-{#<html>#}
-{#<head>#}
-{#<title>Chat Room</title>#}
-{#<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.8/socket.io.min.js"></script>#}
-{#<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>#}
-{#</head>#}
-{#<body>#}
-{#<script type="text/javascript">#}
-{#$(document).ready(function() {#}
-{##}
-{#	var socket = io.connect('http://127.0.0.1:5000');#}
-{##}
-{#	socket.on('connect', function() {#}
-{#		socket.send('User has connected!');#}
-{#	});#}
-{##}
-{#	socket.on('message', function(data) {#}
-{#		$("#messages").append('<li>'+data+'</li>');#}
-{#		console.log('Received message');#}
-{#	});#}
-{##}
-{#	$('#sendbutton').on('click', function() {#}
-{#		socket.send($('#myMessage').val());#}
-{#		$('#myMessage').val('');#}
-{#	});#}
-{##}
-{#});#}
-{#</script>#}
-{#<ul id="messages">#}
-{#    {% if messages %}#}
-{#                            {% for m in messages %}#}
-{#                                <div class="container">#}
-{#                                  <div class="card mb-1">#}
-{#                                      <div class="col-12">#}
-{#                                        <b>{{ m['nickname'] }}:</b>#}
-{#                                      </div>#}
-{#                                      <div class="col-12">#}
-{#                                        <p align="justify">{{ m['user_text'] }}</p>#}
-{#                                      </div>#}
-{#                                      <div class="col-12">#}
-{#                                          <small class="d-block text-dark">"{{ m['date_time'] }}"</small>#}
-{#                                      </div>#}
-{#                                  </div>#}
-{#                                </div>#}
-{#                            {% endfor %}#}
-{#    {% else %}#}
-{#        <p>No messages found.</p>#}
-{#    {% endif %}#}
-{#</ul>#}
-{##}
-{#<input type="text" id="myMessage">#}
-{#<button id="sendbutton">Send</button>#}
-{##}
-{#                        <form method="POST">#}
-{#                                <label for="myMessage" class="form-label"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Enter your message:</font></font></label>#}
-{#                                <input type="text" class="form-control" name="myMessage" id="myMessage" placeholder="Hello, friends!"><br>#}
-{#                                <button class="btn btn-success" id="sendbutton" type="submit">Send message</button>#}
-{#                        </form>#}
-{##}
-{#</body>#}
-{#</html>#}

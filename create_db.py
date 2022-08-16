@@ -31,6 +31,19 @@ def create_tables(connection):
 
     with connection.cursor() as cursor:
         cursor.execute(
+            '''CREATE TABLE IF NOT EXISTS tasks
+                          (task_id SERIAL PRIMARY KEY,
+                          user_id VARCHAR(50),
+                          text_task VARCHAR(1000),
+                          time_cr VARCHAR(30),
+                          completed INTEGER
+                          );''')
+
+    connection.commit()
+
+
+    with connection.cursor() as cursor:
+        cursor.execute(
             '''CREATE TABLE IF NOT EXISTS exchange_currency
                           (currency_id SERIAL PRIMARY KEY,
                           currency_code VARCHAR(20),
