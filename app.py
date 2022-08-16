@@ -8,12 +8,13 @@ from create_db import create_tables, update_crypto, update_currency, update_news
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
 from datetime import datetime
-
+import json
 
 app = Flask(__name__)
 app.secret_key = 'cairocoders-ednalan'
 
 socketio = SocketIO(app, cors_allowed_origins='*')
+
 
 def get_db_connection():
     try:
@@ -149,7 +150,10 @@ def profile():
 
 @app.route('/support')
 def support():
-    return render_template('support.html')
+    if 'loggedin' in session:
+        return render_template('support.html')
+
+    return redirect(url_for('login'))
 
 
 @socketio.on('message')
@@ -168,7 +172,6 @@ def handleMessage(data):
     cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time) 
     VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
     connection.commit()
-
 
 
 @app.route('/messages/', methods=['POST', 'GET'])
@@ -219,36 +222,48 @@ def messages():
     # return redirect(url_for('login'))
 
 
+@app.route('/currency')
+def get_currency():
+    if 'loggedin' in session:
+        cursor = connection.cursor()
+        cursor.execute('''SELECT currency_code, amount, currency_name, currency_value, date_time
+                    FROM exchange_currency ORDER BY 5 DESC LIMIT 34;''')
+
+        all_value = cursor.fetchall()
+        cursor.close()
+
+        dict_val = []
+
+        for elem in all_value:
+            dict_val.append([elem[2], {'code': elem[0], 'amount': elem[1], 'price': elem[3], 'time': elem[4]}])
+        val_curr = sorted(dict_val)
+
+        cursor = connection.cursor()
+        cursor.execute('''SELECT crypto_name, crypto_code, price, exchange_price, capitalization, volume,
+                            exchange_per, date_time FROM exchange_crypto ORDER BY 8 DESC LIMIT 46;''')
+
+        all_value = cursor.fetchall()
+        cursor.close()
+
+        dict_val = []
+
+        for elem in all_value:
+            dict_val.append([elem[0], {'name': elem[0],
+                                       'code': elem[1],
+                                       'price': float(elem[2]),
+                                       'ex_price': elem[3],
+                                       'capitalization': elem[4],
+                                       'volume': elem[5],
+                                       'ex_per': elem[6],
+                                       'time': elem[7]
+                                       }])
+        crypto_curr = dict_val
+
+        return render_template('currency.html', currency_val=val_curr, currency_cryto=crypto_curr)
+
+    return redirect(url_for('login'))
 
 
-
-# @app.route('/1', methods=['GET'])
-# def get_currency():
-#     if request.method == 'GET':
-#         try:
-#             cursor = connection.cursor()
-#             cursor.execute('''SELECT currency_code, amount, currency_name, currency_value, date_time
-#             FROM exchange_currency ORDER BY 5 DESC LIMIT 34;''')
-#
-#             all_value = cursor.fetchall()
-#             cursor.close()
-#
-#             dict_val = {}
-#
-#             for elem in all_value:
-#                 dict_val[elem[2]] = {'code': elem[0],
-#                                      'amount': elem[1],
-#                                      'name': elem[2],
-#                                      'price': elem[3],
-#                                      'time': elem[4]
-#                                      }
-#
-#             currency_js = json.dumps(dict_val, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': '))
-#
-#             return currency_js
-#
-#         except Exception as e:
-#             print(e)
 #
 #
 # @app.route('/2', methods=['GET'])
@@ -281,7 +296,7 @@ def messages():
 #
 #         except Exception as e:
 #             print(e)
-#
+
 #
 # @app.route('/3', methods=['GET'])
 # def get_news():
@@ -354,4 +369,3 @@ create_tables(connection)
 if __name__ == '__main__':
     # app.run(debug=True)
     socketio.run(app)
-
