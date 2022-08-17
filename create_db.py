@@ -33,10 +33,11 @@ def create_tables(connection):
         cursor.execute(
             '''CREATE TABLE IF NOT EXISTS tasks
                           (task_id SERIAL PRIMARY KEY,
-                          user_id VARCHAR(50),
+                          user_id INT,
+                          title_task VARCHAR(200),
                           text_task VARCHAR(1000),
                           time_cr VARCHAR(30),
-                          completed INTEGER
+                          completed INT
                           );''')
 
     connection.commit()

@@ -1,6 +1,5 @@
 import requests
 import feedparser
-import csv
 from fake_useragent import UserAgent
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -28,9 +27,6 @@ def collect_currency():
             date = datetime.now().strftime('%H:%M:%S %d-%m-%Y')
             filter_news.append(date)
             arr_value.append(filter_news)
-
-    # for elem in arr_value:
-    #     print(elem)
 
     return arr_value
 
@@ -64,9 +60,6 @@ def collect_crypto():
 
                 arr_value.append([first_name, last_name, value, diff_value, capitalization, volume, per_change, date])
 
-    # for elem in arr_value:
-    #     print(elem)
-
     return arr_value
 
 
@@ -84,13 +77,5 @@ def collect_news():
         time = datetime.strptime(time[0:25], "%a, %d %b %Y %H:%M:%S")
         image = entry.links[1]["href"]
         arr_data.append([title, link, str(time), image])
-
-    # with open("collect_news.csv", "w", newline='', encoding="utf-8") as file:
-    #     writer = csv.writer(file)
-    #     writer.writerow(arr_headers)
-    #     for row in arr_data:
-    #         writer.writerow(row)
-    # for elem in arr_data:
-    #     print(elem)
 
     return arr_data

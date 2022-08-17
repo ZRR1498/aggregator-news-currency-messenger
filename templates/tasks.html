@@ -1,5 +1,6 @@
-<!DOCTYPE HTML>
-<html lang="ru">
+{% extends 'base2.html' %}
+
+{% block body %}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -8,44 +9,40 @@
           integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
 </head>
 
-<body>
-    <div class="d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 bg-white border-bottom shadow-sm">
-  <h5 class="my-0 mr-md-auto font-weight-normal">Aggregator News</h5>
-  <nav class="my-2 my-md-0 mr-md-3">
-    <a class="p-2 text-dark" href="/messages">Messages</a>
-    <a class="p-2 text-dark" href="/tasks">Tasks</a>
-    <a class="p-2 text-dark" href="/currency">Exchange rates</a>
-    <a class="p-2 text-dark" href="/home">Home</a>
-      <a class="p-2 text-dark" href="/profile">Profile</a>
-      <a class="p-2 text-dark" href="/support">Support</a>
-  </nav>
-  <a class="btn btn-outline-primary" href="/logout">Logout</a>
-    </div>
-
     <div class="container">
         <div class="card-deck mb-3 text-top">
           <div class="card mb-4 shadow-sm">
+              <div class="card-header">
+                  <h4 class="my-0 font-weight-normal"><strong>Your tasks:</strong></h4>
+              </div>
                 <div class="row">
-                    <div class="col-md-8 text-top">
-                        <div style="width: 1100px; height: 500px; overflow: auto;" id="task">
+                        <div style="margin-top: 20px; margin-bottom: 20px; width: 97%; height: 450px; overflow: auto;" id="messages">
                             {% if task %}
                                 {% for m in task %}
                                     <div class="container" id="chat">
                                         <div class="card mb-1">
                                             <div class="col-12">
-                                                <p align="justify">{{ m['text_task'] }}</p>
+                                                <b>Title: {{ m['title'] }}</b>
+                                            </div>
+                                            <div class="col-12">
+                                                <p>Description: {{ m['text_task'] }}</p>
                                             </div>
                                             <div class="col-12">
                                                 <small class="d-block text-dark">"{{ m['time_created'] }}"</small>
                                             </div>
+                                            <div class="card">
+                                                {#разделение окна отправки сообщения#}
+                                            </div>
+                                            <div class="card-header">
+                                                <a href="/task_completed/{{ m['title'] }}" class="btn btn-success">Completed</a>
+                                                <a href="/delete_curr_task/{{ m['title'] }}, {{ m['text_task'] }}" class="btn btn-danger">Delete</a>
+                                            </div>
+
                                         </div>
                                     </div>
                                 {% endfor %}
-                            {% else %}
-                                <p>No task found.</p>
                             {% endif %}
                         </div>
-                    </div>
                 </div>
 
               <div class="card">
@@ -53,26 +50,27 @@
               </div>
 
               <div class="card-header">
-                  <form id="form_send_task" autocomplete="off" novalidate>
+                  <form id="form_send_msg" autocomplete="off" novalidate>
                       <div class="form-group">
-                          <label for="message_input">New task:</label>
-                          <input type="text" class="form-control" id="message_input" placeholder="Enter your task here">
+                          <label for="task_name_input">Title:</label>
+                          <input type="text" class="form-control" id="task_name_input" placeholder="Enter title task here">
+                          <label for="message_input">Description:</label>
+                          <input type="text" class="form-control" id="message_input" placeholder="Enter description task here">
                       </div>
                       <button type="submit" id="send_msg" class="btn btn-success">Create</button>
+
+                      <a href="/tasks/" class="btn btn-success">View current tasks</a>
+                      <a href="/view_completed_tasks/" class="btn btn-success">View completed tasks</a>
+                      <a href="/view_all_tasks/" class="btn btn-success">View all tasks</a>
+                      <a href="/delete_all_tasks/" class="btn btn-danger">Delete all tasks</a>
+
                   </form>
               </div>
 
-              <div class="card-header">
-                  <form method="POST" id="delete_tasks">
-                      <button class="btn btn-success" id="sendbutton" type="submit">Delete all tasks</button>
-                  </form>
-              </div>
           </div>
         </div>
     </div>
 </body>
-
-
 
 <body>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
@@ -83,9 +81,9 @@
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.min.js"></script>
         <script>
             $(document).ready(() => {
-                $('#form_send_task').on('submit', (e) => {
+                {#$('#form_send_msg').on('submit', (e) => {
                     e.preventDefault();
-                });
+                });#}
 
 
                 function check_time() {
@@ -104,22 +102,28 @@
 
                 $('#send_msg').on('click', () => {
                     socket.send({
-                            'msg': $('#message_input').val(),
+                            'title': $('#task_name_input').val(),
+                            'task': $('#message_input').val(),
                             'time': check_time()
                         });
-                    $('#message_input').val('');
+                    $('#message_input').val('')
+                    $('#task_name_input').val('');
                 });
 
-                socket.on('task', data => {
-                    if (data.msg.length > 0 && data.msg.length < 1000) {
+                socket.on('message', data => {
+                    if (data.task.length > 0 && data.task.length < 1000 && data.title.length < 200
+                        && data.task.length > 0) {
                         {
                             const time = check_time()
 
-                            $('#task').append(`<p>
+                            $('#messages').append(`<p>
                                 <div class="container">
                                 <div class="card mb-1">
                                      <div class="col-12">
-                                           <p align="justify">${data.msg}</p>
+                                           <p align="justify">${data.title}</p>
+                                     </div>
+                                     <div class="col-12">
+                                           <p align="justify">${data.task}</p>
                                      </div>
                                      <div class="col-12">
                                            <small class="d-block text-dark">"${time}"</small>
@@ -127,12 +131,18 @@
                                 </div>
                                 </div>
                             </p>`);
+                            div.scrollTop(div.prop('scrollHeight'));
                         }
                         console.log('Received message');
                     }
                 });
+                var div = $("#messages");
+                div.scrollTop(div.prop('scrollHeight'));
             });
         </script>
     {% endif %}
 </body>
+
+{% endblock %}
+
 </html>

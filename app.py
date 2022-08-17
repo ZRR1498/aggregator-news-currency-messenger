@@ -1,14 +1,13 @@
 import psycopg2
 import psycopg2.extras
+import re
 from flask import Flask, request, render_template, redirect, url_for, flash, session
 from flask_socketio import SocketIO, send
 from psycopg2 import Error
 from config import DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
 from create_db import create_tables, update_crypto, update_currency, update_news
 from werkzeug.security import generate_password_hash, check_password_hash
-import re
-from datetime import datetime
-import json
+
 
 app = Flask(__name__)
 app.secret_key = 'cairocoders-ednalan'
@@ -17,13 +16,11 @@ socketio = SocketIO(app, cors_allowed_origins='*')
 
 def get_db_connection():
     try:
-        connection = psycopg2.connect(user=DB_USER,
-                                      password=DB_PASSWORD,
-                                      host=DB_HOST,
-                                      port=DB_PORT,
-                                      database=DB_NAME)
-
-        return connection
+        return psycopg2.connect(user=DB_USER,
+                                password=DB_PASSWORD,
+                                host=DB_HOST,
+                                port=DB_PORT,
+                                database=DB_NAME)
 
     except (Exception, Error) as error:
         print("Ошибка при работе с PostgreSQL", error)
@@ -35,7 +32,7 @@ connection = get_db_connection()
 @app.route('/')
 def start():
     if 'loggedin' in session:
-        return redirect(url_for('home.html', username=session['username']))
+        return redirect(url_for('home', username=session['username']))
     else:
         return redirect(url_for('login'))
 
@@ -101,6 +98,7 @@ def register():
         if user:
             # flash('Account already exist!')
             return render_template('register.html')
+
         elif not re.match(r'[^@]+@[^@]+\.[^@]+', user_email):
             # flash('Invalid email address!')
             return render_template('register.html')
@@ -131,6 +129,10 @@ def logout():
     session.pop('loggedin', None)
     session.pop('id', None)
     session.pop('username', None)
+    session.pop('surname', None)
+    session.pop('nickname', None)
+    session.pop('email', None)
+
     return redirect(url_for('login'))
 
 
@@ -163,6 +165,7 @@ def profile():
 
         cursor.execute('''SELECT * FROM users WHERE user_id = %s''', [session['id']])
         user = cursor.fetchone()
+
         return render_template('profile.html', account=user)
 
     return redirect(url_for('login'))
@@ -178,18 +181,31 @@ def support():
 
 @socketio.on('message')
 def handleMessage(data):
-    send(data, broadcast=True)
-
     cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
     user = cursor.fetchone()
-    user_mess = data['msg']
-    date = data['time']
 
-    cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time) 
-    VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
-    connection.commit()
+    if 'msg' in data:
+        send(data, broadcast=True)
+        user_mess = data['msg']
+        date = data['time']
+
+        if len(user_mess) > 0:
+            cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time) 
+            VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
+            connection.commit()
+
+    if 'task' in data:
+        send(data, broadcast=False)
+        title = data['title']
+        user_mess = data['task']
+        date = data['time']
+
+        if len(user_mess) > 0 and len(user_mess) < 1000 and len(title) > 0 and len(title) < 200:
+            cursor.execute('''INSERT INTO tasks(user_id, title_task, text_task, time_cr, completed) 
+                VALUES (%s, %s, %s, %s, %s);''', (user['user_id'], title, user_mess, date, 0))
+            connection.commit()
 
 
 @app.route('/messages/', methods=['POST', 'GET'])
@@ -202,43 +218,94 @@ def messages():
             connection.commit()
             return redirect(url_for('messages'))
 
-        cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
-        user = cursor.fetchone()
-
         cursor.execute('''SELECT id, nickname, user_text, date_time FROM messages ORDER BY id ASC;''')
         res_mess = cursor.fetchall()
         resp = []
         for row in res_mess:
             resp.append({'nickname': row['nickname'], 'user_text': row['user_text'], 'date_time': row['date_time']})
 
-        return render_template('messages.html', username=user['nickname'], messages=resp)
+        return render_template('messages.html', username=session['nickname'], messages=resp)
 
     return redirect(url_for('login'))
 
-    # cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    #
-    # if 'loggedin' in session:
-    #     if request.method == "POST":
-    #         cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
-    #         user = cursor.fetchone()
-    #         user_mess = request.form['message']
-    #         date = datetime.now().strftime('%H:%M:%S %d-%m-%Y')
-    #
-    #         if len(user_mess) > 0 and len(user_mess) < 1000:
-    #             cursor.execute('''INSERT INTO messages(user_id, nickname, user_text, date_time)
-    #                 VALUES (%s, %s, %s, %s);''', (user['user_id'], user['nickname'], user_mess, date))
-    #             connection.commit()
-    #         return redirect(url_for('messages'))
-    #
-    #     else:
-    #         cursor.execute('''SELECT id, nickname, user_text, date_time FROM messages ORDER BY id DESC''')
-    #         res_mess = cursor.fetchall()
-    #         resp = []
-    #         for row in res_mess:
-    #             resp.append({'nickname': row['nickname'], 'user_text': row['user_text'], 'date_time': row['date_time']})
-    #         return render_template('messages.html', messages=resp)
-    #
-    # return redirect(url_for('login'))
+
+@app.route('/tasks/', methods=['GET'])
+def task_manager():
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    if 'loggedin' in session:
+
+        cursor.execute('''SELECT title_task, text_task, time_cr FROM tasks WHERE user_id = %s AND completed = 0''',
+                       [session['id']])
+        res_mess = cursor.fetchall()
+        resp = []
+        for row in res_mess:
+            resp.append({'title': row['title_task'], 'text_task': row['text_task'], 'time_created': row['time_cr']})
+
+        return render_template('tasks.html', user_id=session['id'], task=resp)
+
+    return redirect(url_for('login'))
+
+
+@app.route("/delete_all_tasks/")
+def delete_all_tasks():
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('''DELETE FROM tasks WHERE user_id = %s''', [session['id']])
+    connection.commit()
+    return redirect(url_for('task_manager'))
+
+
+@app.route("/delete_curr_task/<string:title>, <string:text_task>")
+def delete_curr_task(title, text_task):
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('''DELETE FROM tasks WHERE user_id = %s AND title_task = %s AND text_task = %s''',
+                   [session['id'], title, text_task])
+
+    connection.commit()
+
+    return redirect(url_for('task_manager'))
+
+
+@app.route("/task_completed/<string:title>")
+def completed_curr_task(title):
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('''UPDATE tasks SET completed = 1 WHERE user_id = %s AND title_task = %s;''', [session['id'], title])
+    connection.commit()
+    return redirect(url_for('task_manager'))
+
+
+@app.route("/view_all_tasks/")
+def view_all_tasks():
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('''SELECT title_task, text_task, time_cr FROM tasks WHERE user_id = %s;''',
+                   [session['id']])
+    res_mess = cursor.fetchall()
+    resp = []
+    for row in res_mess:
+        resp.append({'title': row['title_task'], 'text_task': row['text_task'], 'time_created': row['time_cr']})
+
+    return render_template('tasks.html', user_id=session['id'], task=resp)
+
+
+@app.route("/view_completed_tasks/")
+def view_completed_tasks():
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('''SELECT title_task, text_task, time_cr FROM tasks WHERE user_id = %s AND completed = 1''',
+                   [session['id']])
+    res_mess = cursor.fetchall()
+    resp = []
+    for row in res_mess:
+        resp.append({'title': row['title_task'], 'text_task': row['text_task'], 'time_created': row['time_cr']})
+
+    return render_template('tasks.html', user_id=session['id'], task=resp)
+
+
+@app.route("/update_news_curr/")
+def update_news_curr():
+    update_news(connection)
+    update_crypto(connection)
+    update_currency(connection)
+    return redirect(url_for('home'))
 
 
 @app.route('/currency')
@@ -249,8 +316,6 @@ def get_currency():
                     FROM exchange_currency ORDER BY 5 DESC LIMIT 34;''')
 
         all_value = cursor.fetchall()
-        cursor.close()
-
         dict_val = []
 
         for elem in all_value:
@@ -262,8 +327,6 @@ def get_currency():
                             exchange_per, date_time FROM exchange_crypto ORDER BY 8 DESC LIMIT 46;''')
 
         all_value = cursor.fetchall()
-        cursor.close()
-
         dict_val = []
 
         for elem in all_value:
@@ -283,77 +346,10 @@ def get_currency():
     return redirect(url_for('login'))
 
 
-@socketio.on('task')
-def handleTask(data):
-    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
-    user = cursor.fetchone()
-
-    send(data, broadcast=True)
-
-    user_mess = data['msg']
-    date = data['time']
-
-    cursor.execute('''INSERT INTO tasks(user_id, text_task, time_cr, completed)
-    VALUES (%s, %s, %s, %s);''', (user['user_id'], user_mess, date, 0))
-    connection.commit()
-
-
-@app.route('/tasks/', methods=['POST', 'GET'])
-def task_manager():
-    cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
-    if 'loggedin' in session:
-        if request.method == 'POST':
-            cursor.execute('''DELETE FROM tasks;''')
-            connection.commit()
-            return redirect(url_for('tasks'))
-
-        cursor.execute('''SELECT user_id, user_name, nickname FROM users WHERE user_id = %s''', [session['id']])
-        user = cursor.fetchone()
-
-        cursor.execute('''SELECT text_task, time_cr FROM tasks WHERE completed = 0 ORDER BY task_id ASC''',
-                       [session['id']])
-        res_mess = cursor.fetchall()
-        resp = []
-        for row in res_mess:
-            resp.append({'text_task': row['text_task'], 'time_created': row['time_cr']})
-
-        return render_template('tasks.html', user_id=user['user_id'], task=resp)
-
-    return redirect(url_for('login'))
-
-
-# def schedule_track(connection):
-#     # schedule.every().day.at("08:00").do(update_news(connection))
-#     # schedule.every().day.at("14:00").do(update_news(connection))
-#     # schedule.every().day.at("20:00").do(update_news(connection))
-#     # schedule.every().day.at("02:00").do(update_news(connection))
-#
-#     # schedule.every().day.at("08:00").do(update_currency(connection))
-#     # schedule.every().day.at("14:00").do(update_currency(connection))
-#     # schedule.every().day.at("20:00").do(update_currency(connection))
-#     # schedule.every().day.at("02:00").do(update_currency(connection))
-#
-#     schedule.every(20).seconds.do(update_currency, connection=connection)
-#
-#     # schedule.every().day.at("08:00").do(update_crypto(connection))
-#     # schedule.every().day.at("14:00").do(update_crypto(connection))
-#     # schedule.every().day.at("20:00").do(update_crypto(connection))
-#     # schedule.every().day.at("02:00").do(update_crypto(connection))
-#
-#     while True:
-#         schedule.run_pending()
-
-
 create_tables(connection)
-# update_news(connection)
-# schedule_track(connection)
-
-# update_crypto(connection)
-# update_currency(connection)
 
 
 if __name__ == '__main__':
-    # app.run(debug=True)
     socketio.run(app)
+
+

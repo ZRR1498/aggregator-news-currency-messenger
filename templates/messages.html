@@ -1,5 +1,7 @@
-<!DOCTYPE HTML>
-<html lang="ru">
+{% extends 'base2.html' %}
+
+{% block body %}
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -7,20 +9,6 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
           integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
 </head>
-
-<body>
-    <div class="d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 bg-white border-bottom shadow-sm">
-  <h5 class="my-0 mr-md-auto font-weight-normal">Aggregator News</h5>
-  <nav class="my-2 my-md-0 mr-md-3">
-    <a class="p-2 text-dark" href="/messages">Messages</a>
-    <a class="p-2 text-dark" href="/tasks/">Tasks</a>
-    <a class="p-2 text-dark" href="/currency">Exchange rates</a>
-    <a class="p-2 text-dark" href="/home">Home</a>
-      <a class="p-2 text-dark" href="/profile">Profile</a>
-      <a class="p-2 text-dark" href="/support">Support</a>
-  </nav>
-  <a class="btn btn-outline-primary" href="/logout">Logout</a>
-    </div>
 
     <div class="container">
         <div class="card-deck mb-3 text-top">
@@ -30,8 +18,7 @@
               </div>
 
                 <div class="row">
-                    <div class="col-md-8 text-top">
-                        <div style="width: 1100px; height: 500px; overflow: auto;" id="messages">
+                        <div style="margin-top: 20px; margin-bottom: 20px; width: 97%; height: 450px; overflow: auto;" id="messages">
                             {% if messages %}
                                 {% for m in messages %}
                                     <div class="container" id="chat">
@@ -48,11 +35,8 @@
                                         </div>
                                     </div>
                                 {% endfor %}
-                            {% else %}
-                                <p>No messages found.</p>
                             {% endif %}
                         </div>
-                    </div>
                 </div>
 
               <div class="card">
@@ -71,7 +55,7 @@
 
               <div class="card-header">
                   <form method="POST" id="delete_mess">
-                      <button class="btn btn-success" id="sendbutton" type="submit">Delete history</button>
+                      <button class="btn btn-danger" id="sendbutton" type="submit">Delete history</button>
                   </form>
               </div>
           </div>
@@ -106,9 +90,6 @@
                 const username = $('#username').text();
 
 
-                socket.on('connect', () => {
-                    socket.send({'username': 'Service message', 'msg': 'User ' + username + ' has connected!', 'time': check_time()});
-                });
 
                 $('#send_msg').on('click', () => {
                     socket.send({
@@ -118,6 +99,7 @@
                         });
                     $('#message_input').val('');
                 });
+
 
                 socket.on('message', data => {
                     if (data.msg.length > 0 && data.msg.length < 1000) {
@@ -138,78 +120,19 @@
                                 </div>
                                 </div>
                             </p>`);
+                            div.scrollTop(div.prop('scrollHeight'));
                         }
                         console.log('Received message');
                     }
                 });
+
+                var div = $("#messages");
+                div.scrollTop(div.prop('scrollHeight'));
             });
         </script>
     {% endif %}
 </body>
+
+{% endblock %}
+
 </html>
-
-
-
-
-{##}
-{#<html>#}
-{#<head>#}
-{#<title>Chat Room</title>#}
-{#<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.8/socket.io.min.js"></script>#}
-{#<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>#}
-{#</head>#}
-{#<body>#}
-{#<script type="text/javascript">#}
-{#$(document).ready(function() {#}
-{##}
-{#	var socket = io.connect('http://127.0.0.1:5000');#}
-{##}
-{#	socket.on('connect', function() {#}
-{#		socket.send('User has connected!');#}
-{#	});#}
-{##}
-{#	socket.on('message', function(data) {#}
-{#		$("#messages").append('<li>'+data+'</li>');#}
-{#		console.log('Received message');#}
-{#	});#}
-{##}
-{#	$('#sendbutton').on('click', function() {#}
-{#		socket.send($('#myMessage').val());#}
-{#		$('#myMessage').val('');#}
-{#	});#}
-{##}
-{#});#}
-{#</script>#}
-{#<ul id="messages">#}
-{#    {% if messages %}#}
-{#                            {% for m in messages %}#}
-{#                                <div class="container">#}
-{#                                  <div class="card mb-1">#}
-{#                                      <div class="col-12">#}
-{#                                        <b>{{ m['nickname'] }}:</b>#}
-{#                                      </div>#}
-{#                                      <div class="col-12">#}
-{#                                        <p align="justify">{{ m['user_text'] }}</p>#}
-{#                                      </div>#}
-{#                                      <div class="col-12">#}
-{#                                          <small class="d-block text-dark">"{{ m['date_time'] }}"</small>#}
-{#                                      </div>#}
-{#                                  </div>#}
-{#                                </div>#}
-{#                            {% endfor %}#}
-{#    {% else %}#}
-{#        <p>No messages found.</p>#}
-{#    {% endif %}#}
-{#</ul>#}
-{##}
-{#<input type="text" id="myMessage">#}
-{#<button id="sendbutton">Send</button>#}
-{##}
-{#                        <form method="POST">#}
-{#                                <label for="myMessage" class="form-label"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Enter your message:</font></font></label>#}
-{#                                <input type="text" class="form-control" name="myMessage" id="myMessage" placeholder="Hello, friends!"><br>#}
-{#                                <button class="btn btn-success" id="sendbutton" type="submit">Send message</button>#}
-{#                        </form>#}
-{##}
-{#</body>#}
-{#</html>#}
