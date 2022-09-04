@@ -27,7 +27,7 @@ Fill in the following fields in file config.py:
         password = "your_password"
         db_name = "your_db_name"
 
-# Application launch
+## Application launch
 After setting the database parameters, run the file:
 
 * `app.py`
